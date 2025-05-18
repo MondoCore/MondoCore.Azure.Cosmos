@@ -1,5 +1,5 @@
-# MondoCore.Azure.Cosmos
-  Access to Azure Cosmos Database (using SQL API (DocumentDB))
+# MondoCore.Azure.CosmosDB
+  Access to Azure Cosmos Database (using SQL API)
  
 <br>
 
@@ -27,6 +27,8 @@ public static class Example
     }
 }
 ```
+
+See [MondoCore.Data](https://github.com/MondoCore/MondoCore.Data) for full interface reference.
 
 ```
 License
