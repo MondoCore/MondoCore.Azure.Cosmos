@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Jim Lightfoot</Authors>
+    <Description>Implementation of MondoCore.Data interfaces for CosmosDB (SQL API)</Description>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <RepositoryUrl>https://github.com/jim-lightfoot/MondoCore-Azure</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Version>2.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Remove="C:\Users\jligh\.nuget\packages\microsoft.azure.cosmos\3.17.0\contentFiles\any\netstandard2.0\ThirdPartyNotice.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.51.0" />
+    <PackageReference Include="MondoCore.Common" Version="3.0.0" />
+    <PackageReference Include="MondoCore.Data" Version="2.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>
