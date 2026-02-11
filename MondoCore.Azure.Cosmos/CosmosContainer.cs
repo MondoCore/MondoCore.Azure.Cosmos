@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Azure.Cosmos;
@@ -52,14 +54,14 @@ namespace MondoCore.Azure.Cosmos
                     partitionKey = new PartitionKey(idResult.PartitionKey);
             }
 
-            return (id.ToString(), partitionKey);
+            return (id!.ToString()!, partitionKey);
         }
      
-        protected async Task<TValue> InternalGet<TValue>(string id, PartitionKey partitionKey)
+        protected async Task<TValue> InternalGet<TValue>(string id, PartitionKey partitionKey, CancellationToken cancellationToken)
         {
             try
             { 
-                var result = await this.Container.ReadItemAsync<TValue>(id, partitionKey);
+                var result = await this.Container.ReadItemAsync<TValue>(id, partitionKey, cancellationToken: cancellationToken);
             
                 if(result == null)
                     throw new NotFoundException();
@@ -72,32 +74,32 @@ namespace MondoCore.Azure.Cosmos
             }
         }
 
-        protected IAsyncEnumerable<TValue> InternalGet<TValue>(Expression<Func<TValue, bool>> query)
+        protected IAsyncEnumerable<TValue> InternalGet<TValue>(Expression<Func<TValue, bool>> query, CancellationToken cancellationToken)
         {
             return this.Container.GetItemLinqQueryable<TValue>()
                                  .Where(query)
                                  .ToFeedIterator()
-                                 .ToAsyncEnumerable<TValue>();
+                                 .ToAsyncEnumerable<TValue>(cancellationToken);
         }
         
         protected string GetId<TValue>(TValue item)
         {
             if(item is IIdentifiable<TID> identifiable)
-                return identifiable.Id.ToString();
+                return identifiable.Id!.ToString()!;
 
-            var id = item.GetValue<TID>("Id");
+            var id = item!.GetValue<TID>("Id");
 
-            return id.ToString();
+            return id!.ToString()!;
         }
     }
 
     internal static class Extensions
     {
-        internal static async IAsyncEnumerable<TModel> ToAsyncEnumerable<TModel>(this FeedIterator<TModel> setIterator)
+        internal static async IAsyncEnumerable<TModel> ToAsyncEnumerable<TModel>(this FeedIterator<TModel> setIterator, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            while (setIterator.HasMoreResults)
+            while (setIterator.HasMoreResults && !cancellationToken.IsCancellationRequested)
             { 
-                foreach (var item in await setIterator.ReadNextAsync())
+                foreach (var item in await setIterator.ReadNextAsync(cancellationToken))
                 {
                     yield return item;
                 }
