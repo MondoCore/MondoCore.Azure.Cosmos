@@ -1,16 +1,16 @@
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using System.Linq;
-
 using MondoCore.Data;
+
+using Bogus;
+using System.Drawing.Text;
 
 namespace MondoCore.Repository.TestHelper
 {
     public class RepositoryTestBase
     {
-        protected IDatabase                         _db;
+        protected IDatabase                            _db;
         protected IReadRepository<string, Automobile>  _reader;
         protected IWriteRepository<string, Automobile> _writer;
         protected readonly Func<string>                _createNewId;
@@ -28,7 +28,6 @@ namespace MondoCore.Repository.TestHelper
             _repoName    = repoName;
         }
 
-       
         private async Task Initialize()
         {
             await _writer.Delete( _=> true );
@@ -49,7 +48,7 @@ namespace MondoCore.Repository.TestHelper
         [TestCleanup]
         public async Task Cleanup()
         {
-            await _writer.Delete( _=> true );
+           // await _writer.Delete( _=> true );
 
             _idCollection.Clear();
         }
@@ -109,48 +108,37 @@ namespace MondoCore.Repository.TestHelper
         }
 
         [TestMethod]
-        public async Task Writer_Insert_many()
+        [DataRow(1)]
+        [DataRow(10)]
+        [DataRow(100)]
+        public async Task Writer_Insert_many(int numItems)
         {
-            await Initialize();
+            await _writer.Delete( _=> true );
 
-            var id1 = _createNewId();
-            var id2 = _createNewId();
+            _idCollection.Clear();
 
-            await _writer.Insert(new List<Automobile> 
-            {
-                new Automobile 
-                {
-                   Id = id1,
-                   Make = "Pontiac",
-                   Model = "GTO",
-                   Color = "Dark Blue",
-                   Year = 1972
-                },
-                new Automobile 
-                {
-                   Id = id2,
-                   Make = "Aston-Martin",
-                   Model = "DB9",
-                   Color = "Cobalt",
-                   Year = 1968
-                }
-            });
+            var cars = CreateData(numItems);
+
+            await InsertData(cars);
 
             _reader = _db.GetRepositoryReader<string, Automobile>(_repoName, "Pontiac");
 
-            var result1 = await _reader.Get(id1);
+            var result = await (_reader.Get((i) => true)).ToListAsync();
 
-            Assert.IsNotNull(result1);
-            Assert.AreEqual(id1, result1.Id);
-            Assert.AreEqual("GTO", result1.Model);
+            Assert.IsNotNull(result);
+            Assert.AreEqual(numItems, result.Count);
 
-            _reader = _db.GetRepositoryReader<string, Automobile>(_repoName, "Aston-Martin");
+            foreach(var car in cars)
+            {
+                var dbItem = result.Where( c=> c.Id == car.Id).FirstOrDefault();
 
-            var result2 = await _reader.Get(id2);
+                Assert.IsNotNull(dbItem);
 
-            Assert.IsNotNull(result2);
-            Assert.AreEqual(id2, result2.Id);
-            Assert.AreEqual("DB9", result2.Model);
+                Assert.AreEqual(car.Make,  dbItem.Make);
+                Assert.AreEqual(car.Model, dbItem.Model);
+                Assert.AreEqual(car.Color, dbItem.Color);
+                Assert.AreEqual(car.Year,  dbItem.Year);
+            }
         }
 
         [TestMethod]
@@ -161,7 +149,7 @@ namespace MondoCore.Repository.TestHelper
             var id = _createNewId();
             await _writer.Insert(new Automobile { Id = id, Make = "Chevy", Model = "Camaro" });
 
-            await Assert.ThrowsExceptionAsync<NotFoundException>( async ()=> await _reader.Get(_createNewId()));
+            await Assert.ThrowsAsync<NotFoundException>( async ()=> await _reader.Get(_createNewId()));
         }
 
         [TestMethod]
@@ -383,6 +371,31 @@ namespace MondoCore.Repository.TestHelper
             {
                 return JsonSerializer.Serialize(this);
             }
+        }
+
+        private IList<Automobile> CreateData(int numItems)
+        {
+            string[] makes  = new[] { "Chevy", "Pontiac", "Studebaker", "Audi", "Aston-Martin", "Arrow", "Cadillac", "Chrysler", "BMW", "Mercedez-Benz", "Ferrari", "Lotus", "Oldsmobile", "Rolls-Royce" };
+            string[] models  = new[] { "Camaro", "Corvette", "Silverado", "G5", "G5", "ST-2", "ST-4", "DB9", "D12", "DBX", "Firebird", "GTO", "Chevelle", "Spirit", "Adventure", "Pathfinder", "Bonnevile", "Astre", "Vega", "Touring", "Galaxy", "Champion"};
+            string[] colors = new[] { "Blue", "Green", "Black", "Brown", "White", "Orange", "Purple", "Red" };
+
+            return new Faker<Automobile>().StrictMode(false)
+                                          .RuleFor(s => s.Id,       f=> Guid.NewGuid().ToString())
+                                          .RuleFor(s => s.Make,     f=> f.PickRandom(makes))
+                                          .RuleFor(s => s.Model,    f=> f.PickRandom(models))
+                                          .RuleFor(s => s.Color,    f=> f.PickRandom(colors))
+                                          .RuleFor(s => s.Year,     f=> f.Random.Number(1954, 2026))
+                                          .Generate(numItems);
+        }
+
+        private async Task InsertData(IList<Automobile> cars)
+        {
+            var tasks = new List<Task>();
+
+            foreach(var car in cars)
+                tasks.Add(_writer.Insert(car));
+
+            await Task.WhenAll(tasks);
         }
     }
 }

@@ -1,13 +1,13 @@
-﻿using System;
+﻿using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Serialization.HybridRow;
+using MondoCore.Common;
+using MondoCore.Data;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Microsoft.Azure.Cosmos;
-using MondoCore.Common;
-using MondoCore.Data;
 
 namespace MondoCore.Azure.Cosmos
 {
@@ -19,27 +19,27 @@ namespace MondoCore.Azure.Cosmos
 
        #region IWriteRepository
 
-        public async Task<bool> Delete(TID id)
+        public async Task<bool> Delete(TID id, CancellationToken cancellationToken = default)
         {
             var idResult = SplitId(id);
                 
-            await this.Container.DeleteItemAsync<TValue>(idResult.Id, idResult.PartitionKey);
+            await this.Container.DeleteItemAsync<TValue>(idResult.Id, idResult.PartitionKey, cancellationToken: cancellationToken);
 
             return true;
         }
 
-        public async Task<long> Delete(Expression<Func<TValue, bool>> guard)
+        public async Task<long> Delete(Expression<Func<TValue, bool>> guard, CancellationToken cancellationToken = default)
         {
-            var result = InternalGet<TValue>(guard);
+            var result = InternalGet<TValue>(guard, cancellationToken);
             var count = 0L;
 
-            await Parallel.ForEachAsync(result, async (val, token)=>
+            await Parallel.ForEachAsync(result, cancellationToken, async (val, token)=>
             {
                 var partitionKey = GetPartitionKey(val);
 
                 try
                 { 
-                    await this.Container.DeleteItemAsync<TValue>(GetId(val), partitionKey);
+                    await this.Container.DeleteItemAsync<TValue>(GetId(val), partitionKey, cancellationToken: token);
 
                     Interlocked.Increment(ref count);
                 }
@@ -51,24 +51,26 @@ namespace MondoCore.Azure.Cosmos
             return count;
         }
 
-        public async Task<TValue> Insert(TValue item)
+        public async Task<TValue> Insert(TValue item, CancellationToken cancellationToken = default)
         {
-            var result = await this.Container.CreateItemAsync(item);
+            var result = await this.Container.CreateItemAsync(item, cancellationToken: cancellationToken);
 
             return result.Resource;
         }
 
-        public async Task Insert(IEnumerable<TValue> items)
+        public async Task Insert(IEnumerable<TValue> items, CancellationToken cancellationToken = default)
         {
-            foreach(var item in items)
-                await Insert(item);
+            await Parallel.ForEachAsync(items, async (val, token)=>
+            {
+                await Insert(val, token);
+            });
         }
 
-        public async Task<bool> Update(TValue item, Expression<Func<TValue, bool>> guard = null)
+        public async Task<bool> Update(TValue item, Expression<Func<TValue, bool>> guard = null, CancellationToken cancellationToken = default)
         {
             if(guard != null)
             { 
-                var currentItem = await InternalGet<TValue>(GetId(item), GetPartitionKey(item));
+                var currentItem = await InternalGet<TValue>(GetId(item), GetPartitionKey(item), cancellationToken: cancellationToken);
                 var list        = (new List<TValue> {currentItem}) as IEnumerable<TValue>;
                 var fnGuard     = guard.Compile();
 
@@ -80,7 +82,7 @@ namespace MondoCore.Azure.Cosmos
 
             try
             { 
-                var result = await this.Container.UpsertItemAsync(item, partitionKey);
+                var result = await this.Container.UpsertItemAsync(item, partitionKey, cancellationToken: cancellationToken);
 
                 return result.StatusCode == System.Net.HttpStatusCode.OK;
             }
@@ -90,18 +92,18 @@ namespace MondoCore.Azure.Cosmos
             }
         }
 
-        public async Task<long> Update(object properties, Expression<Func<TValue, bool>> query)
+        public async Task<long> Update(object properties, Expression<Func<TValue, bool>> query, CancellationToken cancellationToken = default)
         {
-            var result = InternalGet<TValue>(query); 
+            var result = InternalGet<TValue>(query, cancellationToken: cancellationToken); 
             var count = 0L;
 
-            await Parallel.ForEachAsync(result, async (val, token)=>
+            await Parallel.ForEachAsync(result, cancellationToken, async (val, token)=>
             {
                 try
                 { 
                     if(val.SetValues(properties))
                     { 
-                        await this.Container.UpsertItemAsync<TValue>(val);
+                        await this.Container.UpsertItemAsync<TValue>(val, cancellationToken: token);
                         Interlocked.Increment(ref count);
                     }
                 }
@@ -113,12 +115,12 @@ namespace MondoCore.Azure.Cosmos
             return count;
         }
 
-        public async Task<long> Update(Func<TValue, Task<(bool Update, bool Continue)>> update, Expression<Func<TValue, bool>> query)
+        public async Task<long> Update(Func<TValue, Task<(bool Update, bool Continue)>> update, Expression<Func<TValue, bool>> query, CancellationToken cancellationToken = default)
         {
-            var result = InternalGet<TValue>(query); 
+            var result = InternalGet<TValue>(query, cancellationToken: cancellationToken); 
             var count = 0L;
             
-            await Parallel.ForEachAsync(result, async (val, token)=>
+            await Parallel.ForEachAsync(result, cancellationToken, async (val, token)=>
             {
                 try
                 { 
@@ -126,7 +128,7 @@ namespace MondoCore.Azure.Cosmos
 
                     if(result.Update)
                     { 
-                        await this.Container.UpsertItemAsync<TValue>(val);
+                        await this.Container.UpsertItemAsync<TValue>(val, cancellationToken: cancellationToken);
                         Interlocked.Increment(ref count);
                     }
                 }

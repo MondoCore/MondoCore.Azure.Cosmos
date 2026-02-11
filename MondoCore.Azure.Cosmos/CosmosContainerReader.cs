@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Azure.Cosmos;
@@ -17,24 +19,27 @@ namespace MondoCore.Azure.Cosmos
 
         #region IReadRepository
 
-        public Task<TValue> Get(TID id)
+        public Task<TValue> Get(TID id, CancellationToken cancellationToken = default)
         {
             var idResult = SplitId(id);
 
-            return InternalGet<TValue>(idResult.Id, idResult.PartitionKey);
+            return InternalGet<TValue>(idResult.Id, idResult.PartitionKey, cancellationToken);
         }
 
-        public async IAsyncEnumerable<TValue> Get(IEnumerable<TID> ids)
+        public async IAsyncEnumerable<TValue> Get(IEnumerable<TID> ids, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             foreach(var id in ids)
             { 
+                if(cancellationToken.IsCancellationRequested)
+                    yield break;
+
                 yield return await Get(id);
             }
         }
 
-        public IAsyncEnumerable<TValue> Get(Expression<Func<TValue, bool>> query)
+        public IAsyncEnumerable<TValue> Get(Expression<Func<TValue, bool>> query, CancellationToken cancellationToken = default)
         {
-            return InternalGet<TValue>(query);
+            return InternalGet<TValue>(query, cancellationToken);
         }
 
         #region IQueryable<>
