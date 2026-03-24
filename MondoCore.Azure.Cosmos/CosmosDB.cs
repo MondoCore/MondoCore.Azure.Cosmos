@@ -9,22 +9,28 @@ namespace MondoCore.Azure.Cosmos
     /// <summary>
     /// Provides methods to access a CosmosDB
     /// </summary>
-    public class CosmosDB : IDatabase
+    public class CosmosDB : IDatabase, IDisposable
     {
         protected readonly Database _db;
+        protected readonly CosmosClient _client;
 
         public CosmosDB(string dbName, string connectionString)
         {
-            var client = new CosmosClient(connectionString);
+            _client = new CosmosClient(connectionString);
 
-            _db = client.GetDatabase(dbName);
+            _db = _client.GetDatabase(dbName);
         }
 
         public CosmosDB(string dbName, string endPoint, string authKey)
         {
-            var client = new CosmosClient(endPoint, authKey);
+            _client = new CosmosClient(endPoint, authKey);
 
-            _db = client.GetDatabase(dbName);
+            _db = _client.GetDatabase(dbName);
+        }
+
+        public void Dispose()
+        {
+            _client?.Dispose();
         }
 
         /// <summary>

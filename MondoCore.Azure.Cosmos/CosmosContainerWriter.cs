@@ -23,7 +23,7 @@ namespace MondoCore.Azure.Cosmos
         {
             var idResult = SplitId(id);
                 
-            await this.Container.DeleteItemAsync<TValue>(idResult.Id, idResult.PartitionKey, cancellationToken: cancellationToken);
+            await this.Container.DeleteItemAsync<TValue>(idResult.Id, idResult.PartitionKey, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             return true;
         }
@@ -39,21 +39,21 @@ namespace MondoCore.Azure.Cosmos
 
                 try
                 { 
-                    await this.Container.DeleteItemAsync<TValue>(GetId(val), partitionKey, cancellationToken: token);
+                    await this.Container.DeleteItemAsync<TValue>(GetId(val), partitionKey, cancellationToken: token).ConfigureAwait(false);
 
                     Interlocked.Increment(ref count);
                 }
                 catch
                 {
                 }
-            });
+            }).ConfigureAwait(false);
 
             return count;
         }
 
         public async Task<TValue> Insert(TValue item, CancellationToken cancellationToken = default)
         {
-            var result = await this.Container.CreateItemAsync(item, cancellationToken: cancellationToken);
+            var result = await this.Container.CreateItemAsync(item, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             return result.Resource;
         }
@@ -62,15 +62,15 @@ namespace MondoCore.Azure.Cosmos
         {
             await Parallel.ForEachAsync(items, async (val, token)=>
             {
-                await Insert(val, token);
-            });
+                await Insert(val, token).ConfigureAwait(false);
+            }).ConfigureAwait(false);
         }
 
         public async Task<bool> Update(TValue item, Expression<Func<TValue, bool>> guard = null, CancellationToken cancellationToken = default)
         {
             if(guard != null)
             { 
-                var currentItem = await InternalGet<TValue>(GetId(item), GetPartitionKey(item), cancellationToken: cancellationToken);
+                var currentItem = await InternalGet<TValue>(GetId(item), GetPartitionKey(item), cancellationToken: cancellationToken).ConfigureAwait(false);
                 var list        = (new List<TValue> {currentItem}) as IEnumerable<TValue>;
                 var fnGuard     = guard.Compile();
 
@@ -82,7 +82,7 @@ namespace MondoCore.Azure.Cosmos
 
             try
             { 
-                var result = await this.Container.UpsertItemAsync(item, partitionKey, cancellationToken: cancellationToken);
+                var result = await this.Container.UpsertItemAsync(item, partitionKey, cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 return result.StatusCode == System.Net.HttpStatusCode.OK;
             }
@@ -110,7 +110,7 @@ namespace MondoCore.Azure.Cosmos
                 catch
                 {
                 }
-            });
+            }).ConfigureAwait(false);
 
             return count;
         }
@@ -124,18 +124,18 @@ namespace MondoCore.Azure.Cosmos
             {
                 try
                 { 
-                    var result = await update(val);
+                    var each = await update(val);
 
-                    if(result.Update)
+                    if(each.Update)
                     { 
-                        await this.Container.UpsertItemAsync<TValue>(val, cancellationToken: cancellationToken);
+                        await this.Container.UpsertItemAsync<TValue>(val, cancellationToken: cancellationToken).ConfigureAwait(false);
                         Interlocked.Increment(ref count);
                     }
                 }
                 catch
                 {
                 }
-            });
+            }).ConfigureAwait(false);
 
             return count;
         }

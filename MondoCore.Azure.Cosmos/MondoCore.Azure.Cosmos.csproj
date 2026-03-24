@@ -8,10 +8,12 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/jim-lightfoot/MondoCore-Azure</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <Version>3.0.0</Version>
+    <Version>3.0.1</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <AzureCosmosDisableNewtonsoftJsonCheck>true</AzureCosmosDisableNewtonsoftJsonCheck>
+    <PackageId>MondoCore.Azure.CosmosDB</PackageId>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,16 +21,20 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
-    <PackageReference Include="MondoCore.Common" Version="3.5.0" />
-    <PackageReference Include="MondoCore.Data" Version="2.5.0" />
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\LICENSE">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-    </None>
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
+    <PackageReference Include="MondoCore.Common" Version="3.5.0" />
+    <PackageReference Include="MondoCore.Data" Version="2.5.0" />
   </ItemGroup>
 
 </Project>

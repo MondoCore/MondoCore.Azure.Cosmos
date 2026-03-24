@@ -33,7 +33,7 @@ namespace MondoCore.Azure.Cosmos
                 if(cancellationToken.IsCancellationRequested)
                     yield break;
 
-                yield return await Get(id);
+                yield return await Get(id, cancellationToken).ConfigureAwait(false);
             }
         }
 
