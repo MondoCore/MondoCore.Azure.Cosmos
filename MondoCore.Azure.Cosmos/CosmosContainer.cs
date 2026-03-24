@@ -61,7 +61,7 @@ namespace MondoCore.Azure.Cosmos
         {
             try
             { 
-                var result = await this.Container.ReadItemAsync<TValue>(id, partitionKey, cancellationToken: cancellationToken);
+                var result = await this.Container.ReadItemAsync<TValue>(id, partitionKey, cancellationToken: cancellationToken).ConfigureAwait(false);
             
                 if(result == null)
                     throw new NotFoundException();
@@ -99,7 +99,7 @@ namespace MondoCore.Azure.Cosmos
         {
             while (setIterator.HasMoreResults && !cancellationToken.IsCancellationRequested)
             { 
-                foreach (var item in await setIterator.ReadNextAsync(cancellationToken))
+                foreach (var item in await setIterator.ReadNextAsync(cancellationToken).ConfigureAwait(false))
                 {
                     yield return item;
                 }
